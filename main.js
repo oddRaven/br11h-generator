@@ -3,27 +3,54 @@
 let fs = require('fs');
 let path = require('path');
 
+let storingColumns = ["RDT-ID", "Traject (NS)", "Traject (RDT)", "Stations (RDT)", "Oorzaak", "Start", "Einde", "Duur", "Prognose 1", "Verschil prognose/eindtijd", "Bericht 1"];
+
 function main(){
 	readCsvStoringen(); // create trajecten_stations.csv
-	//readStations(); // rename stations
+	//renameStations(); // rename stations
 }
 
 function readCsvStoringen(){
-	let columns = ["RDT-ID", "traject", "Traject (RDT)", "stations"];
 	require("csv-to-array")({
 		file: "input/storingen-2011-2015.csv", // should not contain new lines inside cells
-		columns: columns
-	}, getTrajectenStations);
+		columns: storingColumns
+	}, modifyStoringen);
 }
 
-function getTrajectenStations(err, arr){
+function modifyStoringen(err, arr){
 	console.log(err || arr.length+" rows loaded");
 
+	addStoringDate(arr);
+	getTrajectenStations(arr);	
+}
+
+function addStoringDate(arr){
+	let newFile = "";
+
+	arr[0].YYYYMMDD = "YYYYMMDD";
+	let length = Object.keys(arr[0]).length;
+
+	Object.keys(arr[0]).forEach(function(key, index) {
+		newFile += arr[0][key] + (index!=length-1 ? "," : "\r\n");
+	});
+
+	for(let i=1; i<arr.length; i++){
+		arr[i].YYYYMMDD = arr[i].Start.substring(0, 10).replace(/-/g, '');
+		length = Object.keys(arr[i]).length;
+
+		Object.keys(arr[i]).forEach(function(key, index){
+			let quote = (arr[i][key].indexOf(",")>-1 ? "\"" : ''); //add quotes if cell has multiple values
+			newFile += quote + arr[i][key] + quote + (index!=length-1 ? "," : "\r\n");
+		});
+	}
+
+	writeFile("storingen.csv", newFile);
+}
+
+function getTrajectenStations(arr){
 	console.log("removing unused properties");
 	for(let i=0; i<arr.length; i++){
-		delete arr[i]["RDT-ID"];
-		delete arr[i]["Traject (RDT)"];
-		arr[i].stations = arr[i].stations.split(',');
+		arr[i].stations = arr[i]["Stations (RDT)"].split(',');
 		for(let j=0; j<arr[i].stations.length; j++) arr[i].stations[j] = arr[i].stations[j].replace(/^\s\s*/, '')
 	}
 
@@ -39,24 +66,23 @@ function getTrajectenStations(err, arr){
 	for(let i=1; i<arr.length; i++){
 		for(let j=0; j<arr[i].stations.length; j++){
 			let station = arr[i].stations[j].toUpperCase();
-			newFile += arr[i].traject+", "+station+"\r\n";
+			newFile += arr[i]["Traject (NS)"]+", "+station+"\r\n";
 		}
 	}
 
-	writeToTrajectenStations(newFile);
+	writeFile("traject_station.csv", newFile);
 }
 
-function writeToTrajectenStations(data){
-	let filePath = path.join(__dirname, "output/traject_station.csv");
+function writeFile(fileName, data){
+	let filePath = path.join(__dirname, "output/"+fileName);
 
 	fs.writeFile(filePath, data, function(err) {
 		if(err) return console.log(err);
-
-		console.log("trajecten_stations.csv was saved!");
+		console.log(fileName+" was created!");
 	}); 
 }
 
-/*function readStations(){
+function renameStations(){
 	let filePath = path.join(__dirname, "input/KNMI_stations.txt");
 
 	fs.readFile(filePath, {encoding: 'utf-8'}, function(err, data){
@@ -68,15 +94,5 @@ function writeToTrajectenStations(data){
 		writeToStations(data);
 	}); 
 }
-
-function writeToStations(data){
-	let filePath = path.join(__dirname, "output/stations.csv");
-
-	fs.writeFile(filePath, data, function(err) {
-		if(err) return console.log(err);
-
-		console.log("The file was saved!");
-	}); 
-}*/
 
 main();
