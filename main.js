@@ -1,13 +1,25 @@
 "use strict"
 
-let fs = require('fs');
+let fs = require('fs.extra');
 let path = require('path');
 
 let storingColumns = ["RDT-ID", "Traject (NS)", "Traject (RDT)", "Stations (RDT)", "Oorzaak", "Start", "Einde", "Duur", "Prognose 1", "Verschil prognose/eindtijd", "Bericht 1"];
 
 function main(){
+	inputToOutput("KNMI_results.csv");
+	inputToOutput("KNMI_stations.csv");
 	readCsvStoringen(); // create trajecten_stations.csv
 	//renameStations(); // rename stations
+}
+
+// copy all input incase there is no output generated of some files
+function inputToOutput(filename){
+	fs.copy('input/'+filename, 'output/'+filename, { replace: true }, function (err) {
+		// i.e. file already exists or can't write to directory 
+		if(err) throw err;
+
+		console.log("Copied 'input/"+filename+"' to 'output/"+filename+"'");
+	});
 }
 
 function readCsvStoringen(){
@@ -73,17 +85,17 @@ function getTrajectenStations(arr){
 	writeFile("traject_station.csv", newFile);
 }
 
-function writeFile(fileName, data){
-	let filePath = path.join(__dirname, "output/"+fileName);
+function writeFile(filename, data){
+	let filePath = path.join(__dirname, "output/"+filename);
 
 	fs.writeFile(filePath, data, function(err) {
 		if(err) return console.log(err);
-		console.log(fileName+" was created!");
+		console.log(filename+" was created!");
 	}); 
 }
 
 function renameStations(){
-	let filePath = path.join(__dirname, "input/KNMI_stations.txt");
+	let filePath = path.join(__dirname, "input/KNMI_stations.csv");
 
 	fs.readFile(filePath, {encoding: 'utf-8'}, function(err, data){
 		if(err) return console.log(err);
